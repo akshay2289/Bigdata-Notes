@@ -1,0 +1,108 @@
+18080  -  spark history server
+50070 - hdfs 
+8088 - yarn     
+reduce vs reduceByKey?
+4040:spark ui
+
+1. Reduce is action while bykey is transformation
+2. reduce give small output and key can give big output
+3. reduce work on single value but key work on tuple only
+
+
+groupbykey vs reduceByKey?
+
+1. both are wide transformation
+2. in  reduceByKey local agregation happen
+
+Optimization
+--------------
+1. Code level
+    redccebykey 
+    persist
+    use dataframe
+    do not convert to reducder
+    file format
+    do not use inferschema
+    use coalesce instead repartition
+    use filter condition earlt as possible
+    use some design pattern like singleton , factory , lazy initialization
+    try avoid more shuffling avoid salting problem
+    avoid groupby
+    use partitioning and buckting
+    use kyro serializer instead java
+    use broadcast join if possible
+    join optimization
+      broadcast if one table is amll
+      use filter condition first to avoid more shuffle in large  tables
+      Sort Aggregate vs Hash Aggregate
+
+2. Cluster Level
+    use optimized resoruces 
+
+
+if you request a container/executor of 4 GB size..
+then you are actually requesting
+4 GB (heap memory)
++
+   
+16
+max (384 mb, 10% of 4 GB) (off heap memory) - overhead
+4096 mb (java heap)
++
+384 mb (off heap) - VM overheads
+out of the 4 GB (total heap memory) 300 mb is again reserved
+4 gb - 300 mb = 3.7 gb
+so we are now left with 3.7 GB
+out of this 3.7 GB 60 % of it goes to the unified (storage + execution memory)
+2.3 GB is for unified region (storage + execution)
+remaining 40% of 3.7 GB goes to user memory... - 1.4 GB
+(to hold user datastructures, storing spark related metadata and safeguarding OOM errors..)
+
+--num-executors --driver-memory --executor-memory --executor-cores
+
+Uber mode
+-------
+What is UBER mode in Hadoop2?
+
+Normally mappers and reducers will run by ResourceManager (RM), RM will create separate container for mapper and reducer. Uber configuration, will allow to run mapper and reducers in the same process as the ApplicationMaster (AM).
+
+Uber jobs :
+
+Uber jobs are jobs that are executed within the MapReduce ApplicationMaster. 
+Rather then communicate with RM to create the mapper and reducer containers. 
+The AM runs the map and reduce tasks within its own process and avoided the overhead of launching and communicate with remote containers.
+
+Why
+
+If you have a small dataset or you want to run MapReduce on small amount of data, 
+Uber configuration will help you out, by reducing additional time that MapReduce normally spends in mapper and reducers phase.
+
+
+work of driver and executor
+======================
+
+Master/Slave architecture    
+each application has driver which is the master process.   
+each application has a bunch of executors which are the slave process.
+Driver - is responsible for analysing the work, divides the work in many tasks, distrib-utes the task, schedules the task and monitors.
+Executor - is responsible to execute the code locally on that JVM (Executor machine)3. who executes where?The executors are always launched on the cluster machines (worker nodes)However, for the driver we have the flexibility to launch it on the client machine or the cluster machines.client mode cluster mode
+
+The driver determines the total number of Tasks by checking the Lineage. 
+The driver creates the Logical and Physical Plan. Once the Physical Plan is generated, Spark allocates the Tasks to the Executors. 
+Task runs on Executor and each Task upon completion returns the result to the Driver    
+
+
+Spark on Yarn architecture in client mode1. 
+when we launch spark-shell automatically spark session is created
+2. as soon as spark session is created request goes to the Yarn resource manager.
+3.  Yarn RM will create a container on one of the node manager and will launch an Application master for this spark application.
+4.  This application Master will negotiate for resources from the Yarn Resource manager in for of containers.
+5. The Yarn RM will create containers on the node managers.
+6. Now the APP master will launch the executors in these containers.
+7. Now the drivers and executors can communicate directly without the involve-ment of containers.
+
+Spark on yarn architecture in cluster mode
+the only difference here is that the spark driver runs on the application master.
+
+
+(select employee , department id , dense_rank(partitionBy department id order by employee) as fianl_rank from employee) e join department e.

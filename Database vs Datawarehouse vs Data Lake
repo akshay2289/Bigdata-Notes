@@ -1,0 +1,78 @@
+Database vs Datawarehouse vs Data Lake
+========================================
+
+Database -
+Transactional data
+OLTP (online transaction processing)
+Structured data
+Recent data - day to day data.
+Example - online banking transaction.
+Oracle, Mysql
+Schema on Write
+
+
+create employee table {
+empid number
+empname string
+salary number
+}
+
+insert into employee (....)
+
+if there is any mismatch with the structure then we will get an error.
+
+the cost to store the data in database is high.
+
+
+DatawareHouse - DWH
+====================
+
+Analytical processing where we require a lot of historical data to find the insights.
+
+The moment we run complex queries on our database with an intent to do some analysis then your day to day transaction will become slow.
+
+we take the data from databases and migrate it to Datawarehouse to do analytical processing.
+
+we get the data from multiple sources.
+
+Structured Data - Schema on write.
+
+Teradata
+
+storage cost is high but lesser than your database.
+
+ETL process -
+
+suppose your data is in database
+
+extract the data
+
+Transform it (is a complex process)
+
+Load it to Datawarehouse
+
+This approach reduces our flexibility.
+
+
+Data Lake
+===========
+
+to get insights from huge amount of data.
+
+the data is present in its raw form. It can be structured or unstructured.
+
+Log File - we can directly have this file in raw form in data lake.
+
+ELT process - Extract Load & Transform.
+
+HDFS, Amazon S3
+
+Cost effective..
+
+Schema on Read.
+
+employee.csv
+
+create structure to visualize or see the data.
+
+it gives you enough flexibility.

@@ -1,0 +1,23 @@
+Sqoop
+Sqoop Import -> RDBMS to HDFS
+Sqoop Export -> HDFS to RDBMS
+
+
+Connect mysql
+-----------------
+
+mysql -u root -p    (another dbase retail_dba) 
+pass: cloudera
+
+
+ctrl + L  -> clear screeen
+
+Commands:
+-------------
+show databases;
+use retail_db;
+show tables;
+
+
+
+

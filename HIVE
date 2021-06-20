@@ -1,0 +1,431 @@
+
+Hive Commands
+================
+
+use trendytech;
+
+create table if not exists mobile(
+    id string , 
+    cost float , 
+    colors array<string>,
+    feature map<string,boolean>
+    ) 
+    row format delimited 
+    fields seperated by "," 
+    collection items terminated by '#'
+    map keys terminated by ':'
+    information struct<battery: string , camera string>
+    stored as textfile;
+
+create  view product_view as select * from product;
+
+
+explode and Lateral View
+========================
+
+Use explode on array column type
+
+describe author_details;
+select explode(book_names) from author_details;
+
+Try selecting other columns with exploded ones
+
+select author_name, explode(book_names) from author_details; (this will error out)
+
+Answer: we need to use a lateral view. The exploded column should bemade as virtual table and should be joined with actual table.
+
+select author_name, b_name from author_details lateral view explode(book_names) book_table as b_name;
+
+Functions
+==============
+
+UDF -> work on single coulmn like trim , concat , floor , length 
+UDAF -> work on multiple column like count(*) , sum(),avg()
+UDTF user defined tablegenerating function-> explode(),posexplode()
+
+Complex Data Type -> Array , Map , Struct , Union(rarely used because on incomplete support)
+
+
+HIVE VS RDBMS
+=====================
+1.  Large Dataset  - small
+2. Parallel Processign - serial
+3. schema on read - on write
+4. high latency - low 
+5. read operation - read/write
+6. Not Acid compliant by default - Acid
+7. minimal index supprt - indexes allowed , index is removed from Hive 3.0
+
+
+Different Ways of Connecting Hive
+==================================
+1. hue
+2. Beeline using jdbc connection string
+
+Different Ways of loading data in Hive
+=======================================
+
+1. insert command - Not recommented it will trigger the Map reduce Job
+2. Loading from File - from LFS/HDFS 
+    load data local inpath <path of local> overwrite into table <table name> .  (overwrite to update the data instead append)
+3. load from another table 
+    insert into table x select * from y ;
+
+External and Internal table
+===========================
+
+1.Internal table is managed by Hive itself not external
+2. Deleting internal table will delete data also
+3. mention external keyword while creatint table along with the data location
+
+
+Other Points
+=============
+hive-site.xml - hive.metastore.warehose.dir decide the default location of hive data in HDFS /user/hive/warehose/
+
+union and UnionAll - union delete duplicate whereas UnionAll keep duplicate
+
+
+Partitioning and Bucketing
+===========================
+
+Type of Partitioning
+--------------------
+
+1. static - The data should be known in advance 
+    
+    load data local inpath <path> into table product partition(category = "CA")
+
+2. Dynamic - used in production usually
+
+    set hive.exec.dynamic.partition = true
+    set hive.exec.dynamic.partition.mode = nonstrict
+
+    load data local inpath <path> into table product ;
+    insert into table product partition(category) select * from  product_x ;
+
+show partitions  product;
+
+Bucketing
+------------------
+set hive.enforxe.buckting = true
+
+create table  product{id: integer , state: string}
+partitioned by category(string )
+clustered by id into 4 buckets;
+
+
+orderby sortby distrubuteby clusterby
+=======================================
+
+orderby
+  This using singe reducer 
+  There is limitation of using orderby , in strict mode limit option is complusary
+  hive.mapred.mode = strict
+
+sortby
+ this will uise multiple reducer
+ sort reducer wise but not global sort
+ Below 2 properties decide how many reducer 
+   set hive.exec.reducers.bytes.per.reducer=2560000
+   set mapred.reduce.tasks=2
+
+distributeby
+  this will ensure each reducder get non overlapping values but no sorting
+
+clusterby
+    sortby + distributeby
+
+
+Rank , Dense_rank ,Rownumber
+=============================
+
+select id , score , rank() over(order by score desc) from student
+
+Rank - ties get the same rank with skiiping the next rank
+dense_rank - not skiping nte next rank
+row_number - assign the unique no to each row with order by , with partition it will behave diferent
+
+Join Optimization
+=================
+
+set hive.auto.convert.join = true  -> to make it map side join enable if the one table is small
+hive.ignore.mapjoin.hint = false -> to allow hive to check if  if the one table is small
+
+select /* +  MAPJOIN(o)*/ c.customerid from customer c join order o on o.order_id = c.customer_id -> o is the small table
+
+when left table is small , only inner and right outer join will work as map side join and vice versa
+
+what is small table as per hive ?
+  hive.mapjoin.smalltable.filesize = 2500000
+
+
+bucket map join
+---------------
+  both table should be buckted
+  bucketed number in large table should be integral no of small table
+  both the table can be large
+  hive.optimize.bucketmap.join = true
+
+
+sort merge map join(SMB)
+----------------------
+    both table should be buckted
+    bucketed number in large table should be equal to no of small table
+    both the table can be large
+    data should be sorted as per join column
+     hive.optimize.bucketmap.sortedmerge = true and many parameter
+
+
+File format
+============
+
+Why do we need different file formats?
+we want to do better in terms of:
+storage cost
+processing speeds
+IO costs 
+
+Choosing an appropriate file format can have some significant benefits:
+Faster read times
+Faster write times
+Splittable files
+Schema evolution support
+Advanced compression support
+Most compatible platform
+
+Text file format
+------------------
+We can store data using standard file formats in Hadoop for example, text files (such
+as comma-separated value [CSV] or XML), however it’s preferable to use one of the
+Hadoop-specific container formats which we will talk about shortly.
+It is a row based file format.
+example csv file.
+Not ideal in Hadoop as it can take a lot of storage and very slow in processing.
+you’ll want to select a compression format for the files, since text files can very
+quickly consume considerable space on your Hadoop cluster. 
+Also, keep in mind that there is an overhead of type conversion associated
+with storing data in text format.
+For example, storing 1234 in a text file and using it as an integer requires a
+string-to-integer conversion during reading, and vice versa during writing.
+It also takes up more space to store 1234 as text than as an integer.
+XML & Json - Structured text data
+A more specialized form of text files is structured formats such as XML and
+JSON.
+
+Avro
+---------------
+Avro is a row-based storage format for Hadoop which is widely used as a serialization
+platform.
+Avro stores the schema in JSON format making it easy to read and interpret by any
+program.
+The data itself is stored in a binary format making it compact and efficient.
+Avro is a language-neutral data serialization system. It can be processed by many
+languages (currently C, C++, C#, Java, Python, and Ruby).
+A key feature of Avro is the robust support for data schemas that changes over time,
+i.e. schema evolution. Avro handles schema changes like missing fields, added fields
+and changed fields. A critical feature if your data has the potential to change.
+This format is the ideal candidate for storing data in a data lake landing
+zone, because:
+1. Data from the landing zone is usually read as a whole for further
+processing by downstream systems (the row-based format is more
+efficient in
+this case).
+2. Downstream systems can easily retrieve table schemas from files (there
+is no need to store the schemas separately in an external meta store).
+3. Any source schema change is easily handled (schema evolution).
+Avro is typically the format of choice for write-heavy workloads given its
+easy to append new rows.
+
+ORC
+------
+
+The Optimized Row Columnar (ORC) file format is a column based file
+formats and prodives a highly efficient way to store data in a compact
+manner.
+The ORC format provides the following features and benefits:
+Provides lightweight, always-on compression provided by type-specific
+readers and writers such as dictionary encoding, bit packing, delta
+encoding, and run length encoding – resulting in dramatically smaller files.
+ORC also supports the use of zlib, LZO, or Snappy to provide further
+compression.
+Allows predicates to be pushed down to the storage layer so that only
+required data is brought back in queries.
+Hive type support including DateTime, decimal, and the complex types (struct,
+list, map, and union)
+Is a splittable storage format.
+Metadata stored using Protocol Buffers, which allows the addition and removal
+of fields.
+The file is broken into three parts- Header, Body, and Tail.
+1. The Header consists of the bytes “ORC’’ to support tools that want to scan the
+front of the file to determine the type of the file.
+2. The body of the file is divided into stripes. Each stripe is self contained and
+may be read using only its own bytes combined with the file’s Footer and
+Postscript.
+The default stripe size is 250 MB. Large stripe sizes enable large, efficient reads
+from HDFS.
+Stripes have three sections:
+ a set of indexes for the rows within the stripe.
+ The data itself
+ stripe footer - contains the encoding of each column
+3. Tail consists of
+File Footer
+The file footer contains a list of stripes in the file, the number of rows per stripe,
+and each column’s data type. It also contains column-level aggregates count,
+min, max, and sum.
+Postscript
+At the end of the file a postscript holds compression parameters and provides a
+way to interpret rest of the file.
+Indexes
+ORC provides three level of indexes within each file:
+file level - statistics about the values in each column across the entire file
+stripe level - statistics about the values in each column for each stripe
+row level - statistics about the values in each column for each set of 10,000 rows
+within a stripe.
+The file and stripe level column statistics are in the file footer so that they are
+easy to access to determine if the rest of the file needs to be read at all.
+Row level indexes include both the column statistics for each row group and
+the position for seeking to the start of the row group.
+The process of reading an ORC file works backwards through the file. The ORC
+reader reads the last 16k bytes of the file with the hope that it will contain both
+the Footer and Postscript sections.
+A drawback of ORC was that it was designed specifically for Hive, and was not a
+general-purpose storage format that can be used with non-Hive MapReduce
+interfaces such as Java. However now lot of these shortcomings are covered
+now.
+
+
+COMPARISONS BETWEEN DIFFERENT FILE FORMATS
+-----------------------------------------------
+AVRO vs PARQUET
+AVRO is a row-based storage format whereas PARQUET is a columnar based
+storage format.
+PARQUET is much better for analytical querying i.e. reads and querying are
+much more efficient than writing.
+Write operations in AVRO are better than in PARQUET.
+AVRO is much mature than PARQUET when it comes to schema evolution.
+PARQUET only supports schema append whereas AVRO supports a
+much-featured schema evolution i.e. adding or modifying columns.
+PARQUET is ideal for querying a subset of columns in a multi-column
+table.
+AVRO is ideal in case of ETL operations where we need to query all the
+columns.
+ORC vs PARQUET
+PARQUET is more capable of storing nested data.
+ORC is more capable of Predicate Pushdown.
+ORC supports ACID properties.
+ORC is more compression efficient.
+
+
+Compression technique:
+1. Snappy - provide good speed on compressing but not in terms of size , good to use with AVRO , parquet , ORC since snappy is not inherently  splitable
+2. LZO - same as snappy but it will have splitable feature due to which we can use text file , it has to be downloaded from external as hadoop dont provide support
+3. Gzip - good in terms of size but slow , best with  AVRO , parquet , ORC since gzip dont provide splitable
+4. Bzip2
+
+Optimization
+====================
+1. Partioning and buckting
+2. Join side optimization like map side join , BMAP join , SMB
+3. file format 
+4. compression
+5. Vectorization  -> it will read data 1024 rows at a time instead one by one if ur are using operation like filter
+6. use execution engine as tez or spark
+7. use orc file format with snappy and orc have feature like predicate pushdown means filtered are performaed earlier at storoge level
+8. UDF are not optimised , if we are using UDF put UDF at the last in ANDed condition which make it Faster
+
+MSCK Repair - > used to add metadata of hive table if anything is missing in metastore like adding partition mannualyy .
+
+Thrift Server - its a service which allow  remote client to submit request to hive using a variety of language and retreive result
+
+window function
+===========================
+
+Create a table groceries inside Trendytech:
+create table groceries
+(
+ id string,
+ store string,
+ product string,
+ day date,
+ revenue double
+)
+row format delimited fields terminated by ',';
+
+
+load data local inpath
+ '/home/cloudera/Downloads/groceries.csv'
+ into table groceries;
+
+
+ To get running sum of groceries table - order by id:
+
+ from groceries
+ select id, revenue, day,
+ sum(revenue) over (order by id ows between unbounded preceding and current row) as running_total;
+
+To get running sum of groceries table - order by day:
+
+from groceries
+ select id, revenue, day,
+ sum(revenue) over (
+ order by day
+rows between unbounded preceding and current row
+)
+as running_total;
+
+
+To get running average of groceries table:
+
+from groceries
+ select id, revenue, day,
+ avg(revenue) over (
+ order by id
+rows between unbounded preceding and current row
+)
+as running_average;
+
+To get revenue running total for each day:
+
+from groceries1
+ select id, revenue, day,
+ sum(revenue) over (
+ partition by day
+ order by id
+)
+as running_total;
+
+To get running count of no of records for each day:
+from groceries1
+ select id, revenue, day,
+ count(id) over (
+ partition by day
+ order by id
+)
+as running_count;
+
+
+Revenue running total for each day without
+oredr by key specified:
+
+from groceries1
+ select id, revenue, day,
+ sum(revenue) over (
+ partition by day
+ )
+as running_sum;
+
+
+Calculating aggregations over a window of a
+specific size:
+
+from groceries1
+ select id, revenue, day,
+ avg(revenue) over (
+ order by id
+ rows between 3 preceding and current row
+)
+as running_average
+
+
+

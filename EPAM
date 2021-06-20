@@ -1,0 +1,305 @@
+EPAM
+
+1. find the latest pre id for a id 
+    id , pre , req
+    1, acct , null 
+    1,rej , null
+    2, acct , null 
+    2,nod , null
+
+    output 
+    1,rej , null
+    2,nod , null
+
+    Solution- 
+    val df = inputdf.na.fill("NA") 
+    val windowspec = Window.partitionBy(col("id")).orderBy(col("id"))
+    val out = df.withColumn("lastcolumn", row_number().over(windowspec))
+    val finaldf =  out.withColumn("maxval", max("lastcolumn").over(windowspec)).
+                     filter(col("lastcolumn") === col("maxval")).
+                     drop("lastcolumn").
+                     drop("maxval")
+    finaldf.show()
+
+2. Spark optimization strategy
+
+3. 2 file 30GB and 10GB , how will join efficiently ?
+
+4. Convert this map to dataframe
+Map(id->111,Name-> Anamika,City-> Anamika , State -> Anamika)
+Map(id->111,Name-> Anamika,City-> Banglore , State -> Kar)
+Map(id->111,Name-> Anamika,City-> Banglore , State -> Kar)
+
+Output 
+id,Name,City,State
+111,Anamika,Anamika,Anamika
+
+Solution-
+  val a = Seq(Row(Map("id"->"111","Name"-> "Anamika","City"-> "Anamika" , "State" -> "Anamika")),
+      Row(Map("id"->"112","Name"-> "Anamika","City"-> "Anamika" , "State" -> "Anamika")))
+      
+  import spark.implicits._
+  
+  val schema = StructType(List(StructField("property", MapType(StringType,StringType))))
+     
+  val df = spark.createDataFrame(spark.sparkContext.parallelize(a) ,schema)
+  
+  
+   df.select(col("property").getItem("Name").as("Name"),
+       col("property").getItem("State").as("State"),
+       col("property").getItem("id").as("id"),
+       col("property").getItem("City").as("City")
+       )
+   .show(false)
+  
+  val keysDF = df.select(explode(map_keys($"property"))).distinct()
+  val keys = keysDF.collect().map(f=>f.getString(0))
+  val keyCols = keys.map(f=> col("property").getItem(f).as(f.toString))
+  df.select(keyCols:_*).show(false)
+
+
+
+5. there are a sixe of 3GB after reading it performarming 2 map and 2 aggregation 
+
+6. Difference bwtween case class and singleton class
+
+7. Usage of case class
+
+8. design pattern used in project
+
+9. how to implement builder design pattern  using case class
+
+10. pattern matching
+
+11 . Evaluate  percentage as new column
+id , name ,  salary , percentage
+1,a,60,60/(60+70+70)
+2,b,70,70/(60+70+70)
+3,c,70,70/(60+70+70)
+
+  val a = Seq(Row(1,"Akshay",50),Row(2,"Akshay1",70),Row(3,"Akshay2",70))
+      
+  import spark.implicits._
+  
+  val schema = StructType(List(StructField("id", IntegerType),StructField("name", StringType),StructField("salary", IntegerType)))
+     
+  val df = spark.createDataFrame(spark.sparkContext.parallelize(a) ,schema)
+  
+  // Array of Row without zero in collect
+  val total = df.select(sum(col("salary").cast("long"))).collect()(0)(0)
+  
+  df.withColumn("pecent", col("salary")/total).show()
+
+
+12. iterate a string  and print each character
+for (i <- str) println(i)    
+
+13. left join 2 dataframe
+
+  df.join(df1 , df.col("") === df1.col(""),"left")
+
+14 . add column with current time stamp
+
+val curDate = df.withColumn("current_date",current_date().as("current_date"))
+    .withColumn("current_timestamp",current_timestamp().as("current_timestamp"))
+  curDate.show(false)
+
+15 . get highest salary
+
+select d.Name as "Department", e.name as "Employee", e.Salary from 
+(select name , 
+ salary , 
+ dense_rank() over (partition by DepartmentId order by Salary desc ) final_rank ,
+ DepartmentId  from employee
+) e join Department d 
+on e.DepartmentId = d.Id where final_rank = 1
+
+16. change blank to NA in  input table
+empno , ename , sal 
+10,abc,100
+20,,200
+30,xyz,
+
+df.na.fill("0")
+
+17. how to add  updated column to existing column using hive
+
+18. how to add data from non-partitioned table to partitioned table
+
+19. what happen after giving spark submit command
+
+20. difference between map and partioned-map
+
+21. how can we add extra column with null value in dataframe
+
+import org.apache.spark.sql.types.StringType
+
+df.withColumn("foobar", lit(null).cast(StringType))
+
+
+22. joins in dataframe
+
+23. how will you push 1tb data from rdbms to hadoop
+
+24. find the latest updated record on date column ?
+
+25. how to read data ?
+
+id,name,address,loc
+1,"subhash","ban,ka","Banglore"
+2,"sreeni","srnagar",
+3,"Ashok",null,"delhi"
+
+
+
+26. df1 -> med(500<sal<1000),high(sal> 1000),low(sal<500) , create column sal_type with above condition
+
+27. how to resolve small file issue
+
+28. case class usecase
+
+29. df1 union df2 when data and schema both are same for both df , what output you will get?
+
+30. print number of occurance of char in string
+
+31. abstract class and query
+
+32. primary constructor query
+
+33. auxilary constructor
+
+34. 3rd highest salary
+
+35. what is reduce
+
+36. trait query
+
+37. how to take first row and specific column value of first row
+
+38. how to add new column with row_number
+
+39. 
+Reqid acctid
+A B
+B C
+C D
+O/p
+Reqid acctid
+A D
+B D
+C D
+create table iqvia (reqid varchar(2), acctid varchar(2));
+insert into iqvia values ("A", "B"), ("B", "H"), ("C", "D"),("E", "F");
+
+with recursive cte (reqid, new_acctid)
+as
+(select * from iqvia where acctid not in (select reqid from iqvia)
+  union all
+  select iqvia.reqid, cte.new_acctid from cte join iqvia on cte.reqid = iqvia.acctid)
+select * from cte order by reqid;
+
+40. scd type 2?
+
+41. empid , empname , city , date
+1 jon Delhi 201811
+1 x   df    201901
+
+
+42. differenc between abstract and trait
+
+43. check if 2 scala object are similar ?
+
+44. singleton design pattern
+
+45. reducebykey and sortbykey
+
+46. create partitioned table in hive
+
+47. unzip a zipped file from shell/ftp  file from server -linux
+
+48. real life example of using trait and  abstrat class 
+
+49. companion object with example
+
+50. how to get only updated record s from day1 and day2 files in spark
+
+51. what we can use in join condition without using join column
+
+52. how to pass arguments to spark-submit
+
+53. how to write to a table with different  numbers of column  say file with 3 columns and table having 4 columns
+
+54. how to read files woth different column patterns in spark ex. file1(id,name,sal), file2(id , sal , name)
+
+55. higher order function with syntax
+
+56. left anti join
+
+57 . can we return multiple value in scala
+
+58. get the salary of highest employee and his id with department (page 10)
+
+59. calnder table (page 10)
+
+60. 
+1 2 3 4
+5 6 7 8
+1 2  3 4
+ find average of each row
+
+61. how to decide number of core/ executor
+
+62. select 50 columns from df without mentioning column book_names
+
+63. select sum of salary from each department where salary > 10000
+
+solution - select sum(salary) from department where salary > 10000 group by dept_name
+
+64. find the occurance of each element from a list
+
+65. how to add 2 list
+
+66 . what is closure
+
+67. spark colesce and repartition in spark ?
+
+68. how parallel spark job can be triggered ?
+
+69 . object function call 
+
+70. operation program - write a function which can add pr multiple based on parameter
+
+71. can we bucket a table without partitioning ?
+
+72. lets say we have hive table with 5 column and need a new column at 4th column
+
+73.  
+
+emp table
+
+empid , empname , joining date , dept id 
+1,a,01/01/2021,d1
+
+
+salary_ic table
+
+emp_id,inc_date,inc_amount
+1,01/02/2021,100
+1,01/03/2021,100
+
+how many times employee get increment by dept wise
+what is the max incremented amount for specific employee
+
+74. write a scala program to get the maximum time based on input
+1234 -> 23:44
+
+75. write a sql query to get the latest entry for the emp id based on date.
+
+empid , empnm , city , date
+1,a,del,201811
+1,1,banglore , 201901
+
+76. use of broadcast variable and cache
+
+77. suppose we have 5 columns in data frame and 3 column in target dataframe , how we will insert data into targt table ?
+

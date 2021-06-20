@@ -1,0 +1,331 @@
+sql
+
+employees-earning-more-than-their-managers
+
+# Write your MySQL query statement below
+SELECT e.name AS "Employee" 
+    FROM Employee e join Employee m on e.ManagerId = m.Id 
+    where e.Salary > m.Salary
+
+
+
+Duplicate Email
+
+Select Email from Person group by Email having count(*) > 1
+
+
+customers-who-never-order
+
+Select c.name  as "Customers" 
+from Customers c left join Orders o on c.Id = o.CustomerId where o.Id is null
+
+
+Write a SQL query to delete all duplicate email entries in a table named Person, keeping only unique emails based on its smallest Id.
+
+with retained_records as (
+    select min(Id) as Id,Email from Person group by email
+)
+
+delete from Person as p1
+where p1.Id not in (
+  select Id
+  from retained_records
+) 
+
+
+
+Write an SQL query to find all dates' id with higher temperature compared to its previous dates (yesterday).
+
+Return the result table in any order.
+
+The query result format is in the following example:
+
+Weather
++----+------------+-------------+
+| id | recordDate | Temperature |
++----+------------+-------------+
+| 1  | 2015-01-01 | 10          |
+| 2  | 2015-01-02 | 25          |
+| 3  | 2015-01-03 | 20          |
+| 4  | 2015-01-04 | 30          |
++----+------------+-------------+
+
+Result table:
++----+
+| id |
++----+
+| 2  |
+| 4  |
++----+
+In 2015-01-02, temperature was higher than the previous day (10 -> 25).
+In 2015-01-04, temperature was higher than the previous day (20 -> 30).
+
+
+select w2.id  from 
+Weather w1 join
+Weather w2 on w1.recordDate = DATE_ADD(w2.recordDate, INTERVAL -1 DAY ) where w1.Temperature < w2.Temperature
+
+
+Write a SQL query to get the nth highest salary from the Employee table.
+
++----+--------+
+| Id | Salary |
++----+--------+
+| 1  | 100    |
+| 2  | 200    |
+| 3  | 300    |
++----+--------+
+For example, given the above Employee table, the nth highest salary where n = 2 is 200. If there is no nth highest salary, then the query should return null.
+
++------------------------+
+| getNthHighestSalary(2) |
++------------------------+
+| 200                    |
++------------------------+
+
+Oracle
+-----
+CREATE FUNCTION getNthHighestSalary(N IN NUMBER) RETURN NUMBER IS
+result NUMBER;
+BEGIN
+    select salary into result from (
+        select salary , dense_rank() over (order by Salary desc) as rank_num from Employee
+    ) e where e.rank_num = N ;
+
+    RETURN result;
+END;
+
+Mysql
+CREATE FUNCTION getNthHighestSalary(N INT) RETURNS INT
+BEGIN
+  RETURN (
+       select salary  from (
+        select salary , dense_rank() over (order by Salary desc) as rank_num from Employee
+    ) e where e.rank_num = N limit 1
+      
+  );
+END
+
+
+Write a SQL query to rank scores. If there is a tie between two scores, both should have the same ranking. Note that after a tie, the next ranking number should be the next consecutive integer value. In other words, there should be no "holes" between ranks.
+
++----+-------+
+| Id | Score |
++----+-------+
+| 1  | 3.50  |
+| 2  | 3.65  |
+| 3  | 4.00  |
+| 4  | 3.85  |
+| 5  | 4.00  |
+| 6  | 3.65  |
++----+-------+
+For example, given the above Scores table, your query should generate the following report (order by highest score):
+
++-------+---------+
+| score | Rank    |
++-------+---------+
+| 4.00  | 1       |
+| 4.00  | 1       |
+| 3.85  | 2       |
+| 3.65  | 3       |
+| 3.65  | 3       |
+| 3.50  | 4       |
++-------+---------+
+
+select e.Score as "score" , e.Rank  from (
+        select Score , dense_rank() over (order by Score desc) as Rank from Scores
+    ) e
+
+ select e.Score as "score" , e.score_rank as "Rank" from (
+        select Score , dense_rank() over (order by Score desc)  score_rank from Scores
+    ) e
+
+Write an SQL query to find all numbers that appear at least three times consecutively.
+
+Return the result table in any order.
+
+The query result format is in the following example:
+
+ 
+
+Logs table:
++----+-----+
+| Id | Num |
++----+-----+
+| 1  | 1   |
+| 2  | 1   |
+| 3  | 1   |
+| 4  | 2   |
+| 5  | 1   |
+| 6  | 2   |
+| 7  | 2   |
++----+-----+
+
+Result table:
++-----------------+
+| ConsecutiveNums |
++-----------------+
+| 1               |
++-----------------+
+
+
+select distinct e.num as "ConsecutiveNums" from (select num , lead(num , 1) over(order by Id) lead_num , lag(num,1) over(order by Id) lag_num from 
+Logs) e  where e.num = e.lag_num and e.lag_num = e.lead_num
+
+
+
+The Employee table holds all employees. Every employee has an Id, a salary, and there is also a column for the department Id.
+
++----+-------+--------+--------------+
+| Id | Name  | Salary | DepartmentId |
++----+-------+--------+--------------+
+| 1  | Joe   | 70000  | 1            |
+| 2  | Jim   | 90000  | 1            |
+| 3  | Henry | 80000  | 2            |
+| 4  | Sam   | 60000  | 2            |
+| 5  | Max   | 90000  | 1            |
++----+-------+--------+--------------+
+The Department table holds all departments of the company.
+
++----+----------+
+| Id | Name     |
++----+----------+
+| 1  | IT       |
+| 2  | Sales    |
++----+----------+
+Write a SQL query to find employees who have the highest salary in each of the departments. For the above tables, your SQL query should return the following rows (order of rows does not matter).
+
++------------+----------+--------+
+| Department | Employee | Salary |
++------------+----------+--------+
+| IT         | Max      | 90000  |
+| IT         | Jim      | 90000  |
+| Sales      | Henry    | 80000  |
++------------+----------+--------+
+
+select d.Name as "Department", e.name as "Employee", e.Salary from 
+(select name , 
+ salary , 
+ dense_rank() over (partition by DepartmentId order by Salary desc ) final_rank ,
+ DepartmentId  from employee
+) e join Department d 
+on e.DepartmentId = d.Id where final_rank = 1
+
+
+
+Input Format
+
+The OCCUPATIONS table is described as follows:  Occupation will only contain one of the following values: Doctor, Professor, Singer or Actor.
+
+Sample Input
+
+An OCCUPATIONS table that contains the following records:
+
+
+
+Sample Output
+
+Ashely(P)
+Christeen(P)
+Jane(A)
+Jenny(D)
+Julia(A)
+Ketty(P)
+Maria(A)
+Meera(S)
+Priya(S)
+Samantha(D)
+There are a total of 2 doctors.
+There are a total of 2 singers.
+There are a total of 3 actors.
+There are a total of 3 professors.
+
+
+select concat(name,"(",substring(Occupation,1,1),")") from OCCUPATIONS order by name ;
+select concat("There are a total of ",count(*)," ",Lower(Occupation),"s.") from OCCUPATIONS group by Occupation order by count(*)
+
+
+You are given a table, BST, containing two columns: N and P, where N represents the value of a node in Binary Tree, and P is the parent of N.
+
+
+
+Write a query to find the node type of Binary Tree ordered by the value of the node. Output one of the following for each node:
+
+Root: If node is root node.
+Leaf: If node is leaf node.
+Inner: If node is neither root nor leaf node.
+Sample Input
+
+
+
+Sample Output
+
+1 Leaf
+2 Inner
+3 Leaf
+5 Root
+6 Leaf
+8 Inner
+9 Leaf
+
+
+select 
+    bst1.N ,
+    CASE 
+     WHEN ISNULL(bst1.P) THEN "Root"
+     WHEN (select count(*) from BST b where b.P = bst1.N)  > 0 THEN "Inner"
+     ELSE "Leaf" 
+    END
+    from BST bst1 order by bst1.N
+
+
+create table Test(source varchar(100), destination varchar(100));
+insert into Test(source, destination) values("A", "B");
+insert into Test(source, destination) values("B", "A");
+insert into Test(source, destination) values("A", "D");
+insert into Test(source, destination) values("A", "C");
+insert into Test(source, destination) values("B", "D");
+
+WITH cte AS (
+    SELECT
+        CASE WHEN source < destination THEN source ELSE destination END AS Source,
+        CASE WHEN source < destination THEN destination ELSE source END AS Destination
+    FROM Test
+)
+
+SELECT  distinct Source, Destination FROM cte;
+
+
+round off
+----------
+select round(((max(lat_n) - min(lat_n))+(max(long_w)- min(long_w))),4) from station;
+
+
+Symetric pair
+
+You are given a table, Functions, containing two columns: X and Y.
+
+
+
+Two pairs (X1, Y1) and (X2, Y2) are said to be symmetric pairs if X1 = Y2 and X2 = Y1.
+
+Write a query to output all such symmetric pairs in ascending order by the value of X. List the rows such that X1 ≤ Y1.
+
+Sample Input
+
+
+
+Sample Output
+
+20 20
+20 21
+22 23
+
+
+select * from (select f1.x, f1.y from functions f1 , functions f2 where (f1.x=f2.y and f1.y = f2.x and f1.x!=f1.y and f1.x <= f1.y)
+
+union
+
+select f1.x ,f1.y from functions f1 where f1.x = f1.y group by f1.x,f1.y having count(*)>1 ) f3 order by f3.x
+
+
