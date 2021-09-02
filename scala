@@ -1,4 +1,4 @@
-
+https://www.iteratorshq.com/blog/scala-compiler-phases-with-pictures/
 
 what is pure function?
     1.
