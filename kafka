@@ -1,4 +1,7 @@
 spark.streaming.kafka.maxRatePerPartition - this will help for first micromatch to take care
+
+spark.streaming.backpressure.initialRate
+
 sparkConf.set("spark.streaming.backpressure.enabled",”true”) - It dynamically set the message ingestion rate based on previous batch performance, 
 thus making your spark streaming application stable and efficient, without the pitfall of statically capped max rate. 
 
