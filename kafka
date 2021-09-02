@@ -1,3 +1,6 @@
+
+sparkConf.set("spark.streaming.backpressure.enabled",”true”)
+
 kafka session 1
 ================
 
